@@ -24,60 +24,32 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
     private var segmentsData = [SegmentData]()
     private var longestTextWidth:CGFloat = 10
     
-    /**
-     A Boolean value that determines if the width of all segments is going to be fixed or not.
-     
-     When this value is set to true all segments have the same width which equivalent of the width required to display the text that requires the longest width to be drawn.
-     The default value is true.
-     */
-    public var fixedSegmentWidth: Bool = true {
-        didSet {
-            if oldValue != fixedSegmentWidth {
-                setNeedsLayout()
-            }
-        }
-    }
-    
-    
     @objc public var segmentStyle:ScrollableSegmentedControlSegmentStyle = .textOnly {
         didSet {
             if oldValue != segmentStyle {
-                if let collectionView_ = collectionView {
-                    let nilCellClass:AnyClass? = nil
-                    // unregister the old cell
-                    switch oldValue {
-                    case .textOnly:
-                        collectionView_.register(nilCellClass, forCellWithReuseIdentifier: CollectionViewController.textOnlyCellIdentifier)
-                    case .imageOnly:
-                        collectionView_.register(nilCellClass, forCellWithReuseIdentifier: CollectionViewController.imageOnlyCellIdentifier)
-                    case .imageOnTop:
-                        collectionView_.register(nilCellClass, forCellWithReuseIdentifier: CollectionViewController.imageOnTopCellIdentifier)
-                    case .imageOnLeft:
-                        collectionView_.register(nilCellClass, forCellWithReuseIdentifier: CollectionViewController.imageOnLeftCellIdentifier)
-                    }
-
-                    // register the new cell
-                    switch segmentStyle {
-                    case .textOnly:
-                        collectionView_.register(TextOnlySegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.textOnlyCellIdentifier)
-                    case .imageOnly:
-                        collectionView_.register(ImageOnlySegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnlyCellIdentifier)
-                    case .imageOnTop:
-                        collectionView_.register(ImageOnTopSegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnTopCellIdentifier)
-                    case .imageOnLeft:
-                        collectionView_.register(ImageOnLeftSegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnLeftCellIdentifier)
-                    }
-                    
-                    let indexPath = collectionView?.indexPathsForSelectedItems?.last
-                    
-                    setNeedsLayout()
-                    
-                    if indexPath != nil {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: {
-                            self.collectionView?.selectItem(at: indexPath, animated: true, scrollPosition: UICollectionViewScrollPosition.left)
-                        })
-                    }
+                switch segmentStyle {
+                case .textOnly:
+                    collectionView?.register(TextOnlySegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.textOnlyCellIdentifier)
+                case .imageOnly:
+                    collectionView?.register(ImageOnlySegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnlyCellIdentifier)
+                case .imageOnTop:
+                    collectionView?.register(ImageOnTopSegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnTopCellIdentifier)
+                case .imageOnLeft:
+                    collectionView?.register(ImageOnLeftSegmentCollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewController.imageOnLeftCellIdentifier)
                 }
+                
+                let indexPath = collectionView?.indexPathsForSelectedItems?.last
+                
+                setNeedsLayout()
+                flowLayout.invalidateLayout()
+                reloadSegments()
+                
+                if indexPath != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: {
+                        self.collectionView?.selectItem(at: indexPath, animated: true, scrollPosition: UICollectionView.ScrollPosition.left)
+                    })
+                }
+                
             }
         }
     }
@@ -118,16 +90,16 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
         configure()
     }
     
-    fileprivate var normalAttributes:[NSAttributedStringKey : Any]?
-    fileprivate var highlightedAttributes:[NSAttributedStringKey : Any]?
-    fileprivate var selectedAttributes:[NSAttributedStringKey : Any]?
-    fileprivate var _titleAttributes:[UInt: [NSAttributedStringKey : Any]] = [UInt: [NSAttributedStringKey : Any]]()
-    @objc public func setTitleTextAttributes(_ attributes: [NSAttributedStringKey : Any]?, for state: UIControlState) {
+    fileprivate var normalAttributes:[NSAttributedString.Key : Any]?
+    fileprivate var highlightedAttributes:[NSAttributedString.Key : Any]?
+    fileprivate var selectedAttributes:[NSAttributedString.Key : Any]?
+    fileprivate var _titleAttributes:[UInt: [NSAttributedString.Key : Any]] = [UInt: [NSAttributedString.Key : Any]]()
+    @objc public func setTitleTextAttributes(_ attributes: [NSAttributedString.Key : Any]?, for state: UIControl.State) {
         _titleAttributes[state.rawValue] = attributes
         
-        normalAttributes = _titleAttributes[UIControlState.normal.rawValue]
-        highlightedAttributes = _titleAttributes[UIControlState.highlighted.rawValue]
-        selectedAttributes = _titleAttributes[UIControlState.selected.rawValue]
+        normalAttributes = _titleAttributes[UIControl.State.normal.rawValue]
+        highlightedAttributes = _titleAttributes[UIControl.State.highlighted.rawValue]
+        selectedAttributes = _titleAttributes[UIControl.State.selected.rawValue]
         
         for segment in segmentsData {
             configureAttributedTitlesForSegment(segment)
@@ -177,7 +149,7 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
         }
     }
     
-    @objc public func titleTextAttributes(for state: UIControlState) -> [NSAttributedStringKey : Any]? {
+    @objc public func titleTextAttributes(for state: UIControl.State) -> [NSAttributedString.Key : Any]? {
         return _titleAttributes[state.rawValue]
     }
     
@@ -285,16 +257,14 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
     override public func layoutSubviews() {
         super.layoutSubviews()
         
-        guard let collectionView_ = collectionView else {
-            return
-        }
+        collectionView?.frame = CGRect(x: 0, y: 0, width: frame.size.width, height: frame.size.height)
+        collectionView?.contentOffset = CGPoint(x: 0, y: 0)
+        collectionView?.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         
-        collectionView_.frame = CGRect(x: 0, y: 0, width: frame.size.width, height: frame.size.height)
-        collectionView_.contentOffset = CGPoint(x: 0, y: 0)
-        collectionView_.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        configureSegmentSize()
         
         flowLayout.invalidateLayout()
-        configureSegmentSize()
+        
         reloadSegments()
     }
     
@@ -322,29 +292,24 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
     fileprivate func configureSegmentSize() {
         let width:CGFloat
         
-        if fixedSegmentWidth == true {
-            switch segmentStyle {
-            case .imageOnLeft:
-                width = longestTextWidth + BaseSegmentCollectionViewCell.imageSize + BaseSegmentCollectionViewCell.imageToTextMargin * 2
-            default:
-                if collectionView!.frame.size.width > longestTextWidth * CGFloat(segmentsData.count) {
-                    width = collectionView!.frame.size.width / CGFloat(segmentsData.count)
-                } else {
-                    width = longestTextWidth
-                }
+        switch segmentStyle {
+        case .imageOnLeft:
+            width = longestTextWidth + BaseSegmentCollectionViewCell.imageSize + BaseSegmentCollectionViewCell.imageToTextMargin * 2
+        default:
+            if collectionView!.frame.size.width > longestTextWidth * CGFloat(segmentsData.count) {
+                width = collectionView!.frame.size.width / CGFloat(segmentsData.count)
+            } else {
+                width = longestTextWidth
             }
-            
-            flowLayout.estimatedItemSize = CGSize()
-            flowLayout.itemSize = CGSize(width: width, height: frame.size.height)
-        } else {
-            width = 1.0
-            flowLayout.itemSize = CGSize(width: width, height: frame.size.height)
-            flowLayout.estimatedItemSize = CGSize(width: width, height: frame.size.height)
         }
+        
+        
+        let itemSize = CGSize(width: width, height: frame.size.height)
+        flowLayout.itemSize = itemSize
     }
     
     fileprivate func calculateLongestTextWidth(text:String) {
-        let fontAttributes:[NSAttributedStringKey:Any]
+        let fontAttributes:[NSAttributedString.Key:Any]
         if normalAttributes != nil {
             fontAttributes = normalAttributes!
         } else  if highlightedAttributes != nil {
@@ -352,7 +317,7 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
         } else if selectedAttributes != nil {
             fontAttributes = selectedAttributes!
         } else {
-            fontAttributes =  [NSAttributedStringKey.font: BaseSegmentCollectionViewCell.defaultFont]
+            fontAttributes =  [NSAttributedString.Key.font: BaseSegmentCollectionViewCell.defaultFont]
         }
         
         let size = (text as NSString).size(withAttributes: fontAttributes)
@@ -523,7 +488,6 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
         var normalAttributedTitle:NSAttributedString?
         var highlightedAttributedTitle:NSAttributedString?
         var selectedAttributedTitle:NSAttributedString?
-        var variableConstraints = [NSLayoutConstraint]()
         
         var showUnderline:Bool = false {
             didSet {
@@ -571,12 +535,6 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
                 underline.trailingAnchor.constraint(equalTo: contentView.trailingAnchor).isActive = true
                 underline.bottomAnchor.constraint(equalTo: contentView.bottomAnchor).isActive = true
             }
-        }
-        
-        override func setNeedsUpdateConstraints() {
-            super.setNeedsUpdateConstraints()
-            NSLayoutConstraint.deactivate(variableConstraints)
-            variableConstraints.removeAll()
         }
         
         override var isHighlighted: Bool {
@@ -641,20 +599,11 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
             titleLabel.translatesAutoresizingMaskIntoConstraints = false
             titleLabel.textColor = BaseSegmentCollectionViewCell.defaultTextColor
             titleLabel.font = BaseSegmentCollectionViewCell.defaultFont
-            titleLabel.textAlignment = .center
-        }
-        
-        override func updateConstraints() {
-            super.updateConstraints()
-            NSLayoutConstraint.deactivate(variableConstraints)
-            variableConstraints.removeAll()
             
-            variableConstraints.append(titleLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor))
-            variableConstraints.append(titleLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor))
-            variableConstraints.append(titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding))
-            variableConstraints.append(titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -BaseSegmentCollectionViewCell.textPadding))
-            
-            NSLayoutConstraint.activate(variableConstraints)
+            titleLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor).isActive = true
+            titleLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor).isActive = true
+            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
+            contentView.trailingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
         }
     }
     
@@ -693,26 +642,17 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
             contentView.addSubview(imageView)
             imageView.translatesAutoresizingMaskIntoConstraints = false
             imageView.tintColor = BaseSegmentCollectionViewCell.defaultTextColor
-        }
-        
-        override func updateConstraints() {
-            super.updateConstraints()
-            NSLayoutConstraint.deactivate(variableConstraints)
-            variableConstraints.removeAll()
             
-            variableConstraints.append(imageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor))
-            variableConstraints.append(imageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor))
-            variableConstraints.append(imageView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding))
-            variableConstraints.append(contentView.trailingAnchor.constraint(greaterThanOrEqualTo: imageView.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding))
-            
-            NSLayoutConstraint.activate(variableConstraints)
+            imageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor).isActive = true
+            imageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor).isActive = true
+            imageView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
+            contentView.trailingAnchor.constraint(greaterThanOrEqualTo: imageView.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
         }
     }
     
-    private class BaseImageSegmentCollectionViewCell: BaseSegmentCollectionViewCell {
+    private class ImageOnTopSegmentCollectionViewCell: BaseSegmentCollectionViewCell {
         let titleLabel = UILabel()
         let imageView = UIImageView()
-        internal let stackView = UIStackView()
         
         override var contentColor:UIColor? {
             didSet {
@@ -726,7 +666,7 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
                 titleLabel.highlightedTextColor = (selectedContentColor == nil) ? UIColor.black : selectedContentColor!
             }
         }
-
+        
         override var isHighlighted: Bool {
             didSet {
                 if let title = (isHighlighted) ? super.highlightedAttributedTitle : super.normalAttributedTitle {
@@ -772,46 +712,89 @@ public enum ScrollableSegmentedControlSegmentStyle: Int {
             titleLabel.translatesAutoresizingMaskIntoConstraints = false
             imageView.translatesAutoresizingMaskIntoConstraints = false
             
-            stackView.distribution = .fill
-            stackView.spacing = BaseSegmentCollectionViewCell.textPadding
-            stackView.addArrangedSubview(imageView)
-            stackView.addArrangedSubview(titleLabel)
+            contentView.addSubview(titleLabel)
+            contentView.addSubview(imageView)
             
-            stackView.translatesAutoresizingMaskIntoConstraints = false
-            contentView.addSubview(stackView)
+            imageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor).isActive = true
+            titleLabel.centerXAnchor.constraint(equalTo: imageView.centerXAnchor).isActive = true
+            titleLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -BaseSegmentCollectionViewCell.textPadding).isActive = true
+            imageView.bottomAnchor.constraint(equalTo: titleLabel.topAnchor, constant: -BaseSegmentCollectionViewCell.textPadding).isActive = true
+            imageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
+        }
+    }
+    
+    private class ImageOnLeftSegmentCollectionViewCell: BaseSegmentCollectionViewCell {
+        let titleLabel = UILabel()
+        let imageView = UIImageView()
+        
+        override var contentColor:UIColor? {
+            didSet {
+                titleLabel.textColor = (contentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : contentColor!
+                imageView.tintColor = (contentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : contentColor!
+            }
         }
         
-        override func updateConstraints() {
-            super.updateConstraints()
-            NSLayoutConstraint.deactivate(variableConstraints)
-            variableConstraints.removeAll()
-            
-            variableConstraints.append(stackView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor))
-            variableConstraints.append(stackView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor))
-            variableConstraints.append(stackView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding))
-            variableConstraints.append(contentView.trailingAnchor.constraint(greaterThanOrEqualTo: stackView.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding))
-            
-            NSLayoutConstraint.activate(variableConstraints)
+        override var selectedContentColor:UIColor? {
+            didSet {
+                titleLabel.highlightedTextColor = (selectedContentColor == nil) ? UIColor.black : selectedContentColor!
+            }
         }
-    }
-    
-    private class ImageOnTopSegmentCollectionViewCell: BaseImageSegmentCollectionViewCell {
+        
+        override var isHighlighted: Bool {
+            didSet {
+                if let title = (isHighlighted) ? super.highlightedAttributedTitle : super.normalAttributedTitle {
+                    titleLabel.attributedText = title
+                } else {
+                    titleLabel.isHighlighted = isHighlighted
+                }
+                
+                if isHighlighted {
+                    imageView.tintColor = (selectedContentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : selectedContentColor!
+                } else {
+                    imageView.tintColor = (contentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : contentColor!
+                }
+            }
+        }
+        
+        override var isSelected: Bool {
+            didSet {
+                if isSelected {
+                    if let title = super.selectedAttributedTitle {
+                        titleLabel.attributedText = title
+                    } else {
+                        titleLabel.textColor = (selectedContentColor == nil) ? UIColor.black : selectedContentColor!
+                    }
+                    imageView.tintColor = (selectedContentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : selectedContentColor!
+                } else {
+                    if let title = super.normalAttributedTitle {
+                        titleLabel.attributedText = title
+                    } else {
+                        titleLabel.textColor = (contentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : contentColor!
+                    }
+                    imageView.tintColor = (contentColor == nil) ? BaseSegmentCollectionViewCell.defaultTextColor : contentColor!
+                }
+            }
+        }
+        
         override func configure(){
             super.configure()
-            stackView.axis = .vertical
-        }
-    }
-    
-    private class ImageOnLeftSegmentCollectionViewCell: BaseImageSegmentCollectionViewCell {
-        override func configure(){
-            super.configure()
-            var imgFrame = imageView.frame
-            imgFrame.size = CGSize(width: BaseSegmentCollectionViewCell.imageSize, height: BaseSegmentCollectionViewCell.imageSize)
-            imageView.frame = imgFrame
+            titleLabel.font = BaseSegmentCollectionViewCell.defaultFont
+            imageView.contentMode = .scaleAspectFit
+            imageView.clipsToBounds = true
+            
+            contentView.addSubview(titleLabel)
+            contentView.addSubview(imageView)
+            
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            
             imageView.heightAnchor.constraint(equalToConstant: BaseSegmentCollectionViewCell.imageSize).isActive = true
             imageView.widthAnchor.constraint(equalToConstant: BaseSegmentCollectionViewCell.imageSize).isActive = true
-            
-            stackView.axis = .horizontal
+            imageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor).isActive = true
+            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
+            titleLabel.centerYAnchor.constraint(equalTo: imageView.centerYAnchor).isActive = true
+            titleLabel.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
+            contentView.trailingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: BaseSegmentCollectionViewCell.textPadding).isActive = true
         }
     }
 }
